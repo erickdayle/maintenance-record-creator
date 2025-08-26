@@ -38,15 +38,19 @@ function getNextDueDate(frequency) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const formatApiDate = (date) => {
+    return date.toISOString().slice(0, 19) + "+00:00";
+  };
+
   switch (frequency) {
     case "Daily":
-      return new Date().toISOString();
+      return formatApiDate(new Date());
 
     case "Weekly":
       if (today.getDay() === 0) {
         const nextSaturday = new Date(today);
         nextSaturday.setDate(today.getDate() + 6);
-        return nextSaturday.toISOString();
+        return formatApiDate(nextSaturday);
       }
       break;
 
@@ -57,7 +61,7 @@ function getNextDueDate(frequency) {
           today.getMonth() + 1,
           0
         );
-        return endOfMonth.toISOString();
+        return formatApiDate(endOfMonth);
       }
       break;
 
@@ -68,7 +72,7 @@ function getNextDueDate(frequency) {
           today.getMonth() + 1,
           0
         );
-        return endOfCurrentMonth.toISOString();
+        return formatApiDate(endOfCurrentMonth);
       }
       break;
 
@@ -79,14 +83,14 @@ function getNextDueDate(frequency) {
           today.getMonth() + 2,
           0
         );
-        return endOfNextMonth.toISOString();
+        return formatApiDate(endOfNextMonth);
       }
       break;
 
     case "Annually":
       if (today.getDate() === 1 && today.getMonth() === 0) {
         const endOfMarch = new Date(today.getFullYear(), 3, 0);
-        return endOfMarch.toISOString();
+        return formatApiDate(endOfMarch);
       }
       break;
   }
@@ -133,6 +137,13 @@ async function runMaintenanceJob() {
           data: {
             type: "records",
             attributes: {
+              // System IDs required by the API
+              type: parseInt(process.env.MAINTENANCE_RECORD_TYPE_ID),
+              project_id: fullRecord.relationships.project?.data?.id || null,
+              status_id: parseInt(process.env.INITIAL_STATUS_ID),
+              parent_id: attributes.cf_parent_record,
+
+              // Custom fields copied from the previous record
               cf_parent_record: attributes.cf_parent_record,
               cf_gmp_classification: attributes.cf_gmp_classification,
               cf_metro_equipment_manufactur:
