@@ -34,7 +34,7 @@ function filterMostRecentRecords(records) {
   return mostRecentRecords;
 }
 
-function getNextDueDate(frequency) {
+function getNextDueDate(frequency, lastDueDate) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -66,13 +66,17 @@ function getNextDueDate(frequency) {
       break;
 
     case "Quarterly":
-      if (today.getDate() === 1 && today.getMonth() % 3 === 0) {
-        const endOfCurrentMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() + 1,
-          0
-        );
-        return formatApiDate(endOfCurrentMonth);
+      const quarterlyDueDate = new Date(lastDueDate);
+      quarterlyDueDate.setMonth(quarterlyDueDate.getMonth() + 3);
+      const creationDateQuarterly = new Date(quarterlyDueDate);
+      creationDateQuarterly.setDate(quarterlyDueDate.getDate() - 7);
+
+      if (
+        today.getFullYear() === creationDateQuarterly.getFullYear() &&
+        today.getMonth() === creationDateQuarterly.getMonth() &&
+        today.getDate() === creationDateQuarterly.getDate()
+      ) {
+        return formatApiDate(quarterlyDueDate);
       }
       break;
 
@@ -88,9 +92,18 @@ function getNextDueDate(frequency) {
       break;
 
     case "Annually":
-      if (today.getDate() === 1 && today.getMonth() === 0) {
-        const endOfMarch = new Date(today.getFullYear(), 3, 0);
-        return formatApiDate(endOfMarch);
+      const annualDueDate = new Date(lastDueDate);
+      annualDueDate.setFullYear(annualDueDate.getFullYear() + 1);
+      const creationDateAnnual = new Date(annualDueDate);
+      creationDateAnnual.setMonth(annualDueDate.getMonth() - 1);
+      creationDateAnnual.setDate(1);
+
+      if (
+        today.getFullYear() === creationDateAnnual.getFullYear() &&
+        today.getMonth() === creationDateAnnual.getMonth() &&
+        today.getDate() === creationDateAnnual.getDate()
+      ) {
+        return formatApiDate(annualDueDate);
       }
       break;
   }
@@ -108,7 +121,8 @@ async function runMaintenanceJob() {
       return (
         attr.cf_parent_record &&
         attr.cf_maintenance_frequency_dropdown &&
-        attr.date_created
+        attr.date_created &&
+        attr.cf_next_pm_due_date
       );
     });
     console.log(`Found ${validRecords.length} valid records after filtering.`);
@@ -122,8 +136,9 @@ async function runMaintenanceJob() {
       const recordId = summaryRecord.id;
       const frequency =
         summaryRecord.attributes.cf_maintenance_frequency_dropdown;
+      const lastDueDate = summaryRecord.attributes.cf_next_pm_due_date;
 
-      const nextDueDate = getNextDueDate(frequency);
+      const nextDueDate = getNextDueDate(frequency, lastDueDate);
 
       if (nextDueDate) {
         console.log(

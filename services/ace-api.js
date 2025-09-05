@@ -22,7 +22,7 @@ export const searchMaintenanceRecords = async () => {
   let page = 1;
   let hasMorePages = true;
 
-  const aqlQuery = `select id, cf_parent_record, cf_maintenance_frequency_dropdown, date_created 
+  const aqlQuery = `select id, cf_parent_record, cf_maintenance_frequency_dropdown, date_created, cf_next_pm_due_date
                       from __main__ 
                       where type in (${process.env.MAINTENANCE_RECORD_TYPE_ID}) 
                       AND status_id not in (${process.env.CANCELLED_STATE_ID})`;
