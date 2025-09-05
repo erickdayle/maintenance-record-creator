@@ -141,7 +141,11 @@ async function runMaintenanceJob() {
               type: parseInt(process.env.MAINTENANCE_RECORD_TYPE_ID),
               project_id: fullRecord.relationships.project?.data?.id || null,
               status_id: parseInt(process.env.INITIAL_STATUS_ID),
-              parent_id: attributes.cf_parent_record,
+
+              // Use the 'parent' relationship if it exists, otherwise use 'cf_parent_record'
+              parent_id: fullRecord.relationships.parent?.data?.id
+                ? fullRecord.relationships.parent.data.id
+                : attributes.cf_parent_record,
 
               // Custom fields copied from the previous record
               cf_parent_record: attributes.cf_parent_record,
