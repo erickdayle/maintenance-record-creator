@@ -8,13 +8,23 @@ async function apiFetch(endpoint, options = {}) {
     Authorization: `Bearer ${TOKEN}`,
   };
 
-  const response = await fetch(url, { ...options, headers });
+  try {
+    const response = await fetch(url, { ...options, headers });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error: ${response.status} - ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Request Failed:", {
+        url,
+        method: options.method,
+        body: options.body,
+      });
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("API Fetch Error:", error);
+    throw error;
   }
-  return response.json();
 }
 
 export const searchMaintenanceRecords = async () => {
@@ -22,10 +32,7 @@ export const searchMaintenanceRecords = async () => {
   let page = 1;
   let hasMorePages = true;
 
-  const aqlQuery = `select id, cf_parent_record, cf_maintenance_frequency_dropdown, date_created, cf_next_pm_due_date
-                      from __main__ 
-                      where type in (${process.env.MAINTENANCE_RECORD_TYPE_ID}) 
-                      AND status_id not in (${process.env.CANCELLED_STATE_ID})`;
+  const aqlQuery = `select id, parent_id, cf_next_pm_due_date, cf_parent_record, cf_maintenance_frequency_dropdown, date_created from __main__ where type in (${process.env.MAINTENANCE_RECORD_TYPE_ID}) AND status_id not in (${process.env.CANCELLED_STATE_ID})`;
 
   while (hasMorePages) {
     const response = await apiFetch(`/records/search?page=${page}`, {

@@ -42,49 +42,101 @@ function getNextDueDate(frequency, lastDueDate) {
     return date.toISOString().slice(0, 19) + "+00:00";
   };
 
+  const lastDueDateObj = new Date(lastDueDate);
+
   switch (frequency) {
     case "Daily":
-      return formatApiDate(new Date());
+      // A daily record is created and due the day after the last record's due date
+      const nextDay = new Date(lastDueDateObj);
+      nextDay.setDate(lastDueDateObj.getDate() + 1);
+      return today.getDate() === nextDay.getDate() &&
+        today.getMonth() === nextDay.getMonth() &&
+        today.getFullYear() === nextDay.getFullYear()
+        ? formatApiDate(nextDay)
+        : null;
 
     case "Weekly":
-      if (today.getDay() === 0) {
-        const nextSaturday = new Date(today);
-        nextSaturday.setDate(today.getDate() + 6);
+      // A weekly record is created on a Sunday and due the following Saturday
+      const nextWeek = new Date(lastDueDateObj);
+      nextWeek.setDate(lastDueDateObj.getDate() + 7);
+      const creationDateWeekly = new Date(nextWeek);
+      creationDateWeekly.setDate(nextWeek.getDate() - 1); // The day before the new due date
+
+      if (
+        today.getFullYear() === creationDateWeekly.getFullYear() &&
+        today.getMonth() === creationDateWeekly.getMonth() &&
+        today.getDate() === creationDateWeekly.getDate()
+      ) {
+        const nextSaturday = new Date(creationDateWeekly);
+        nextSaturday.setDate(creationDateWeekly.getDate() + 6);
         return formatApiDate(nextSaturday);
       }
       break;
 
     case "Monthly":
-      if (today.getDate() === 1) {
-        const endOfMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() + 1,
+      // A monthly record is created on the 1st of the month and due at the end of that month
+      const nextMonth = new Date(lastDueDateObj);
+      nextMonth.setMonth(lastDueDateObj.getMonth() + 1);
+      const creationDateMonthly = new Date(nextMonth);
+      creationDateMonthly.setDate(1);
+
+      if (
+        today.getFullYear() === creationDateMonthly.getFullYear() &&
+        today.getMonth() === creationDateMonthly.getMonth() &&
+        today.getDate() === creationDateMonthly.getDate()
+      ) {
+        const endOfNewMonth = new Date(
+          creationDateMonthly.getFullYear(),
+          creationDateMonthly.getMonth() + 1,
           0
         );
-        return formatApiDate(endOfMonth);
+        return formatApiDate(endOfNewMonth);
       }
       break;
 
     case "Quarterly":
-      const quarterlyDueDate = new Date(lastDueDate);
-      quarterlyDueDate.setMonth(quarterlyDueDate.getMonth() + 3);
-      const creationDateQuarterly = new Date(quarterlyDueDate);
-      creationDateQuarterly.setDate(quarterlyDueDate.getDate() - 7);
+      // A quarterly record is created 7 days before the start of the next quarter, and due at the end of that month
+      const nextQuarter = new Date(lastDueDateObj);
+      nextQuarter.setMonth(lastDueDateObj.getMonth() + 3);
+      const creationDateQuarterly = new Date(
+        nextQuarter.getFullYear(),
+        nextQuarter.getMonth(),
+        1
+      );
+      creationDateQuarterly.setDate(creationDateQuarterly.getDate() - 7);
 
       if (
         today.getFullYear() === creationDateQuarterly.getFullYear() &&
         today.getMonth() === creationDateQuarterly.getMonth() &&
         today.getDate() === creationDateQuarterly.getDate()
       ) {
-        return formatApiDate(quarterlyDueDate);
+        const endOfNewMonth = new Date(
+          nextQuarter.getFullYear(),
+          nextQuarter.getMonth() + 1,
+          0
+        );
+        return formatApiDate(endOfNewMonth);
       }
       break;
 
     case "Biannually":
-      if (today.getDate() === 1 && today.getMonth() % 6 === 0) {
+      // A biannual record is created on the 1st of the month, 5 months after the last due date
+      const nextBiannual = new Date(lastDueDateObj);
+      nextBiannual.setMonth(lastDueDateObj.getMonth() + 5);
+      const creationDateBiannual = new Date(
+        nextBiannual.getFullYear(),
+        nextBiannual.getMonth(),
+        1
+      );
+
+      if (
+        today.getFullYear() === creationDateBiannual.getFullYear() &&
+        today.getMonth() === creationDateBiannual.getMonth() &&
+        today.getDate() === creationDateBiannual.getDate()
+      ) {
         const endOfNextMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() + 2,
+          nextBiannual.getFullYear(),
+          nextBiannual.getMonth() + 2,
           0
         );
         return formatApiDate(endOfNextMonth);
@@ -92,18 +144,21 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Annually":
-      const annualDueDate = new Date(lastDueDate);
-      annualDueDate.setFullYear(annualDueDate.getFullYear() + 1);
-      const creationDateAnnual = new Date(annualDueDate);
-      creationDateAnnual.setMonth(annualDueDate.getMonth() - 1);
-      creationDateAnnual.setDate(1);
+      // An annual record is created on the 1st of the month, 1 month before the next due date, and due 1 year from the last due date
+      const nextAnnual = new Date(lastDueDateObj);
+      nextAnnual.setFullYear(lastDueDateObj.getFullYear() + 1);
+      const creationDateAnnual = new Date(
+        nextAnnual.getFullYear(),
+        nextAnnual.getMonth() - 1,
+        1
+      );
 
       if (
         today.getFullYear() === creationDateAnnual.getFullYear() &&
         today.getMonth() === creationDateAnnual.getMonth() &&
         today.getDate() === creationDateAnnual.getDate()
       ) {
-        return formatApiDate(annualDueDate);
+        return formatApiDate(nextAnnual);
       }
       break;
   }
