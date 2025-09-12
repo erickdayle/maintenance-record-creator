@@ -35,7 +35,7 @@ function filterMostRecentRecords(records) {
 }
 
 function getNextDueDate(frequency, lastDueDate) {
-  const today = new Date();
+  const today = new Date("2025-11-14");
   today.setHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
@@ -46,21 +46,23 @@ function getNextDueDate(frequency, lastDueDate) {
 
   switch (frequency) {
     case "Daily":
-      // A daily record is created and due the day after the last record's due date
       const nextDay = new Date(lastDueDateObj);
       nextDay.setDate(lastDueDateObj.getDate() + 1);
-      return today.getDate() === nextDay.getDate() &&
+
+      if (
+        today.getDate() === nextDay.getDate() &&
         today.getMonth() === nextDay.getMonth() &&
         today.getFullYear() === nextDay.getFullYear()
-        ? formatApiDate(nextDay)
-        : null;
+      ) {
+        return formatApiDate(nextDay);
+      }
+      break;
 
     case "Weekly":
-      // A weekly record is created on a Sunday and due the following Saturday
       const nextWeek = new Date(lastDueDateObj);
       nextWeek.setDate(lastDueDateObj.getDate() + 7);
       const creationDateWeekly = new Date(nextWeek);
-      creationDateWeekly.setDate(nextWeek.getDate() - 1); // The day before the new due date
+      creationDateWeekly.setDate(nextWeek.getDate() - 1);
 
       if (
         today.getFullYear() === creationDateWeekly.getFullYear() &&
@@ -74,10 +76,9 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Monthly":
-      // A monthly record is created on the 1st of the month and due at the end of that month
-      const nextMonth = new Date(lastDueDateObj);
-      nextMonth.setMonth(lastDueDateObj.getMonth() + 1);
-      const creationDateMonthly = new Date(nextMonth);
+      const nextMonthDue = new Date(lastDueDateObj);
+      nextMonthDue.setMonth(lastDueDateObj.getMonth() + 1);
+      const creationDateMonthly = new Date(nextMonthDue);
       creationDateMonthly.setDate(1);
 
       if (
@@ -95,12 +96,11 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Quarterly":
-      // A quarterly record is created 7 days before the start of the next quarter, and due at the end of that month
-      const nextQuarter = new Date(lastDueDateObj);
-      nextQuarter.setMonth(lastDueDateObj.getMonth() + 3);
+      const quarterlyDueDate = new Date(lastDueDateObj);
+      quarterlyDueDate.setMonth(lastDueDateObj.getMonth() + 3);
       const creationDateQuarterly = new Date(
-        nextQuarter.getFullYear(),
-        nextQuarter.getMonth(),
+        quarterlyDueDate.getFullYear(),
+        quarterlyDueDate.getMonth(),
         1
       );
       creationDateQuarterly.setDate(creationDateQuarterly.getDate() - 7);
@@ -111,8 +111,8 @@ function getNextDueDate(frequency, lastDueDate) {
         today.getDate() === creationDateQuarterly.getDate()
       ) {
         const endOfNewMonth = new Date(
-          nextQuarter.getFullYear(),
-          nextQuarter.getMonth() + 1,
+          quarterlyDueDate.getFullYear(),
+          quarterlyDueDate.getMonth() + 1,
           0
         );
         return formatApiDate(endOfNewMonth);
@@ -120,13 +120,20 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Biannually":
-      // A biannual record is created on the 1st of the month, 5 months after the last due date
-      const nextBiannual = new Date(lastDueDateObj);
-      nextBiannual.setMonth(lastDueDateObj.getMonth() + 5);
-      const creationDateBiannual = new Date(
-        nextBiannual.getFullYear(),
-        nextBiannual.getMonth(),
-        1
+      // A biannual record is created on the 1st of the month, 6 months after the last due date
+      const nextBiannualDue = new Date(lastDueDateObj);
+      nextBiannualDue.setMonth(lastDueDateObj.getMonth() + 6);
+      const creationDateBiannual = new Date(nextBiannualDue);
+      creationDateBiannual.setDate(1);
+
+      console.log(
+        `Today: ${today
+          .toISOString()
+          .slice(0, 10)}, Creation Date: ${creationDateBiannual
+          .toISOString()
+          .slice(0, 10)}, Next Biannual Due: ${nextBiannualDue
+          .toISOString()
+          .slice(0, 10)}`
       );
 
       if (
@@ -134,12 +141,7 @@ function getNextDueDate(frequency, lastDueDate) {
         today.getMonth() === creationDateBiannual.getMonth() &&
         today.getDate() === creationDateBiannual.getDate()
       ) {
-        const endOfNextMonth = new Date(
-          nextBiannual.getFullYear(),
-          nextBiannual.getMonth() + 2,
-          0
-        );
-        return formatApiDate(endOfNextMonth);
+        return formatApiDate(nextBiannualDue);
       }
       break;
 
