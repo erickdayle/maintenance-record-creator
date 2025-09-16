@@ -35,7 +35,7 @@ function filterMostRecentRecords(records) {
 }
 
 function getNextDueDate(frequency, lastDueDate) {
-  const today = new Date("2025-11-14");
+  const today = new Date("2025-09-28");
   today.setHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
@@ -59,18 +59,21 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Weekly":
-      const nextWeek = new Date(lastDueDateObj);
-      nextWeek.setDate(lastDueDateObj.getDate() + 7);
-      const creationDateWeekly = new Date(nextWeek);
-      creationDateWeekly.setDate(nextWeek.getDate() - 1);
+      const nextSunday = new Date(lastDueDateObj);
+      nextSunday.setDate(lastDueDateObj.getDate() + 1); // Start from the day after the last due date
+
+      // Find the next Sunday (where getDay() === 0)
+      while (nextSunday.getDay() !== 0) {
+        nextSunday.setDate(nextSunday.getDate() + 1);
+      }
 
       if (
-        today.getFullYear() === creationDateWeekly.getFullYear() &&
-        today.getMonth() === creationDateWeekly.getMonth() &&
-        today.getDate() === creationDateWeekly.getDate()
+        today.getFullYear() === nextSunday.getFullYear() &&
+        today.getMonth() === nextSunday.getMonth() &&
+        today.getDate() === nextSunday.getDate()
       ) {
-        const nextSaturday = new Date(creationDateWeekly);
-        nextSaturday.setDate(creationDateWeekly.getDate() + 6);
+        const nextSaturday = new Date(nextSunday);
+        nextSaturday.setDate(nextSunday.getDate() + 6); // Set the due date for the following Saturday
         return formatApiDate(nextSaturday);
       }
       break;
