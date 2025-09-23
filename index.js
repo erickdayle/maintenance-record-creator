@@ -35,7 +35,7 @@ function filterMostRecentRecords(records) {
 }
 
 function getNextDueDate(frequency, lastDueDate) {
-  const today = new Date("2025-09-28");
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
