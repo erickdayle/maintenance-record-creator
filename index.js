@@ -137,7 +137,7 @@ function getNextDueDate(frequency, lastDueDate) {
 
     case "Biannually":
       const nextBiannualDue = new Date(lastDueDateObj);
-      nextBiannualDue.setMonth(lastDueDateObj.getMonth() + 6);
+      nextBiannualDue.setMonth(lastDueDateObj.getMonth() + 5);
       const creationDateBiannual = new Date(nextBiannualDue);
       creationDateBiannual.setDate(1);
 
