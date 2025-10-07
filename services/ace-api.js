@@ -32,7 +32,7 @@ export const searchMaintenanceRecords = async () => {
   let page = 1;
   let hasMorePages = true;
 
-  const aqlQuery = `select id, parent_id, cf_next_pm_due_date, cf_parent_record, cf_maintenance_frequency_dropdown, date_created from __main__ JOIN status where type in (${process.env.MAINTENANCE_RECORD_TYPE_ID}) AND status.linked_state neq ${process.env.CANCELLED_STATE_ID}`;
+  const aqlQuery = `select id, parent_id, cf_next_pm_due_date, cf_parent_record, cf_parent_equipment_record_new, cf_maintenance_frequency_dropdown, date_created from __main__ JOIN status where type in (${process.env.MAINTENANCE_RECORD_TYPE_ID}) AND status.linked_state neq ${process.env.CANCELLED_STATE_ID}`;
 
   while (hasMorePages) {
     const response = await apiFetch(`/records/search?page=${page}`, {

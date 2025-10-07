@@ -5,18 +5,32 @@ import {
   createMaintenanceRecord,
 } from "./services/ace-api.js";
 
+// Helper function to get the parent ID from available fields
+const getParentId = (attributes) => {
+  return (
+    attributes.cf_parent_record ||
+    attributes.cf_parent_equipment_record_new ||
+    attributes.parent_id ||
+    null
+  );
+};
+
 function filterMostRecentRecords(records) {
   const groups = new Map();
 
   for (const record of records) {
-    const parentId = record.attributes.cf_parent_record;
+    const parentId = getParentId(record.attributes);
     const frequency = record.attributes.cf_maintenance_frequency_dropdown;
-    const groupKey = `${parentId}-${frequency}`;
 
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, []);
+    // UPDATED: Filter out records with a null, undefined, or 'None' frequency
+    if (frequency && frequency.toLowerCase() !== "none") {
+      const groupKey = `${parentId}-${frequency}`;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, []);
+      }
+      groups.get(groupKey).push(record);
     }
-    groups.get(groupKey).push(record);
   }
 
   const mostRecentRecords = [];
@@ -35,7 +49,7 @@ function filterMostRecentRecords(records) {
 }
 
 function getNextDueDate(frequency, lastDueDate) {
-  const today = new Date();
+  const today = new Date("2025-10-02");
   today.setHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
@@ -60,9 +74,8 @@ function getNextDueDate(frequency, lastDueDate) {
 
     case "Weekly":
       const nextSunday = new Date(lastDueDateObj);
-      nextSunday.setDate(lastDueDateObj.getDate() + 1); // Start from the day after the last due date
+      nextSunday.setDate(lastDueDateObj.getDate() + 1);
 
-      // Find the next Sunday (where getDay() === 0)
       while (nextSunday.getDay() !== 0) {
         nextSunday.setDate(nextSunday.getDate() + 1);
       }
@@ -73,7 +86,7 @@ function getNextDueDate(frequency, lastDueDate) {
         today.getDate() === nextSunday.getDate()
       ) {
         const nextSaturday = new Date(nextSunday);
-        nextSaturday.setDate(nextSunday.getDate() + 6); // Set the due date for the following Saturday
+        nextSaturday.setDate(nextSunday.getDate() + 6);
         return formatApiDate(nextSaturday);
       }
       break;
@@ -123,21 +136,10 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Biannually":
-      // A biannual record is created on the 1st of the month, 6 months after the last due date
       const nextBiannualDue = new Date(lastDueDateObj);
       nextBiannualDue.setMonth(lastDueDateObj.getMonth() + 6);
       const creationDateBiannual = new Date(nextBiannualDue);
       creationDateBiannual.setDate(1);
-
-      console.log(
-        `Today: ${today
-          .toISOString()
-          .slice(0, 10)}, Creation Date: ${creationDateBiannual
-          .toISOString()
-          .slice(0, 10)}, Next Biannual Due: ${nextBiannualDue
-          .toISOString()
-          .slice(0, 10)}`
-      );
 
       if (
         today.getFullYear() === creationDateBiannual.getFullYear() &&
@@ -149,7 +151,6 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Annually":
-      // An annual record is created on the 1st of the month, 1 month before the next due date, and due 1 year from the last due date
       const nextAnnual = new Date(lastDueDateObj);
       nextAnnual.setFullYear(lastDueDateObj.getFullYear() + 1);
       const creationDateAnnual = new Date(
@@ -178,8 +179,10 @@ async function runMaintenanceJob() {
 
     const validRecords = allRecords.filter((record) => {
       const attr = record.attributes;
+      const hasParentId =
+        attr.cf_parent_record || attr.cf_parent_equipment_record_new;
       return (
-        attr.cf_parent_record &&
+        hasParentId &&
         attr.cf_maintenance_frequency_dropdown &&
         attr.date_created &&
         attr.cf_next_pm_due_date
@@ -208,22 +211,24 @@ async function runMaintenanceJob() {
         const fullRecord = await getRecordMetadata(recordId);
         const attributes = fullRecord.attributes;
 
+        const definitiveParentId =
+          fullRecord.relationships.parent?.data?.id ||
+          attributes.cf_parent_record ||
+          attributes.cf_parent_equipment_record_new ||
+          summaryRecord.attributes.parent_id;
+
         const payload = {
           data: {
             type: "records",
             attributes: {
-              // System IDs required by the API
               type: parseInt(process.env.MAINTENANCE_RECORD_TYPE_ID),
               project_id: fullRecord.relationships.project?.data?.id || null,
               status_id: parseInt(process.env.INITIAL_STATUS_ID),
+              parent_id: definitiveParentId,
 
-              // Use the 'parent' relationship if it exists, otherwise use 'cf_parent_record'
-              parent_id: fullRecord.relationships.parent?.data?.id
-                ? fullRecord.relationships.parent.data.id
-                : attributes.cf_parent_record,
-
-              // Custom fields copied from the previous record
               cf_parent_record: attributes.cf_parent_record,
+              cf_parent_equipment_record_new:
+                attributes.cf_parent_equipment_record_new,
               cf_gmp_classification: attributes.cf_gmp_classification,
               cf_metro_equipment_manufactur:
                 attributes.cf_metro_equipment_manufactur,
