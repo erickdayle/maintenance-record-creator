@@ -22,7 +22,6 @@ function filterMostRecentRecords(records) {
     const parentId = getParentId(record.attributes);
     const frequency = record.attributes.cf_maintenance_frequency_dropdown;
 
-    // UPDATED: Filter out records with a null, undefined, or 'None' frequency
     if (frequency && frequency.toLowerCase() !== "none") {
       const groupKey = `${parentId}-${frequency}`;
 
@@ -49,8 +48,9 @@ function filterMostRecentRecords(records) {
 }
 
 function getNextDueDate(frequency, lastDueDate) {
+  // Use the current date for production runs
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
     return date.toISOString().slice(0, 19) + "+00:00";
@@ -61,12 +61,12 @@ function getNextDueDate(frequency, lastDueDate) {
   switch (frequency) {
     case "Daily":
       const nextDay = new Date(lastDueDateObj);
-      nextDay.setDate(lastDueDateObj.getDate() + 1);
+      nextDay.setUTCDate(lastDueDateObj.getUTCDate() + 1);
 
       if (
-        today.getDate() === nextDay.getDate() &&
-        today.getMonth() === nextDay.getMonth() &&
-        today.getFullYear() === nextDay.getFullYear()
+        today.getUTCDate() === nextDay.getUTCDate() &&
+        today.getUTCMonth() === nextDay.getUTCMonth() &&
+        today.getUTCFullYear() === nextDay.getUTCFullYear()
       ) {
         return formatApiDate(nextDay);
       }
@@ -74,38 +74,40 @@ function getNextDueDate(frequency, lastDueDate) {
 
     case "Weekly":
       const nextSunday = new Date(lastDueDateObj);
-      nextSunday.setDate(lastDueDateObj.getDate() + 1);
+      nextSunday.setUTCDate(lastDueDateObj.getUTCDate() + 1);
 
-      while (nextSunday.getDay() !== 0) {
-        nextSunday.setDate(nextSunday.getDate() + 1);
+      while (nextSunday.getUTCDay() !== 0) {
+        nextSunday.setUTCDate(nextSunday.getUTCDate() + 1);
       }
 
       if (
-        today.getFullYear() === nextSunday.getFullYear() &&
-        today.getMonth() === nextSunday.getMonth() &&
-        today.getDate() === nextSunday.getDate()
+        today.getUTCFullYear() === nextSunday.getUTCFullYear() &&
+        today.getUTCMonth() === nextSunday.getUTCMonth() &&
+        today.getUTCDate() === nextSunday.getUTCDate()
       ) {
         const nextSaturday = new Date(nextSunday);
-        nextSaturday.setDate(nextSunday.getDate() + 6);
+        nextSaturday.setUTCDate(nextSunday.getUTCDate() + 6);
         return formatApiDate(nextSaturday);
       }
       break;
 
     case "Monthly":
       const nextMonthDue = new Date(lastDueDateObj);
-      nextMonthDue.setMonth(lastDueDateObj.getMonth() + 1);
+      nextMonthDue.setUTCMonth(lastDueDateObj.getUTCMonth() + 1);
       const creationDateMonthly = new Date(nextMonthDue);
-      creationDateMonthly.setDate(1);
+      creationDateMonthly.setUTCDate(1);
 
       if (
-        today.getFullYear() === creationDateMonthly.getFullYear() &&
-        today.getMonth() === creationDateMonthly.getMonth() &&
-        today.getDate() === creationDateMonthly.getDate()
+        today.getUTCFullYear() === creationDateMonthly.getUTCFullYear() &&
+        today.getUTCMonth() === creationDateMonthly.getUTCMonth() &&
+        today.getUTCDate() === creationDateMonthly.getUTCDate()
       ) {
         const endOfNewMonth = new Date(
-          creationDateMonthly.getFullYear(),
-          creationDateMonthly.getMonth() + 1,
-          0
+          Date.UTC(
+            creationDateMonthly.getUTCFullYear(),
+            creationDateMonthly.getUTCMonth() + 1,
+            0
+          )
         );
         return formatApiDate(endOfNewMonth);
       }
@@ -113,38 +115,42 @@ function getNextDueDate(frequency, lastDueDate) {
 
     case "Quarterly":
       const quarterlyDueDate = new Date(lastDueDateObj);
-      quarterlyDueDate.setMonth(lastDueDateObj.getMonth() + 3);
+      quarterlyDueDate.setUTCMonth(lastDueDateObj.getUTCMonth() + 3);
       const creationDateQuarterly = new Date(
-        quarterlyDueDate.getFullYear(),
-        quarterlyDueDate.getMonth(),
-        1
+        Date.UTC(
+          quarterlyDueDate.getUTCFullYear(),
+          quarterlyDueDate.getUTCMonth(),
+          1
+        )
       );
-      creationDateQuarterly.setDate(creationDateQuarterly.getDate() - 7);
+      creationDateQuarterly.setUTCDate(creationDateQuarterly.getUTCDate() - 7);
 
       if (
-        today.getFullYear() === creationDateQuarterly.getFullYear() &&
-        today.getMonth() === creationDateQuarterly.getMonth() &&
-        today.getDate() === creationDateQuarterly.getDate()
+        today.getUTCFullYear() === creationDateQuarterly.getUTCFullYear() &&
+        today.getUTCMonth() === creationDateQuarterly.getUTCMonth() &&
+        today.getUTCDate() === creationDateQuarterly.getUTCDate()
       ) {
         const endOfNewMonth = new Date(
-          quarterlyDueDate.getFullYear(),
-          quarterlyDueDate.getMonth() + 1,
-          0
+          Date.UTC(
+            quarterlyDueDate.getUTCFullYear(),
+            quarterlyDueDate.getUTCMonth() + 1,
+            0
+          )
         );
         return formatApiDate(endOfNewMonth);
       }
       break;
-
     case "Biannually":
+    case "Bi-Annually":
       const nextBiannualDue = new Date(lastDueDateObj);
-      nextBiannualDue.setMonth(lastDueDateObj.getMonth() + 5);
+      nextBiannualDue.setUTCMonth(lastDueDateObj.getUTCMonth() + 5);
       const creationDateBiannual = new Date(nextBiannualDue);
-      creationDateBiannual.setDate(1);
+      creationDateBiannual.setUTCDate(1);
 
       if (
-        today.getFullYear() === creationDateBiannual.getFullYear() &&
-        today.getMonth() === creationDateBiannual.getMonth() &&
-        today.getDate() === creationDateBiannual.getDate()
+        today.getUTCFullYear() === creationDateBiannual.getUTCFullYear() &&
+        today.getUTCMonth() === creationDateBiannual.getUTCMonth() &&
+        today.getUTCDate() === creationDateBiannual.getUTCDate()
       ) {
         return formatApiDate(nextBiannualDue);
       }
@@ -152,17 +158,15 @@ function getNextDueDate(frequency, lastDueDate) {
 
     case "Annually":
       const nextAnnual = new Date(lastDueDateObj);
-      nextAnnual.setFullYear(lastDueDateObj.getFullYear() + 1);
+      nextAnnual.setUTCFullYear(lastDueDateObj.getUTCFullYear() + 1);
       const creationDateAnnual = new Date(
-        nextAnnual.getFullYear(),
-        nextAnnual.getMonth() - 1,
-        1
+        Date.UTC(nextAnnual.getUTCFullYear(), nextAnnual.getUTCMonth() - 1, 1)
       );
 
       if (
-        today.getFullYear() === creationDateAnnual.getFullYear() &&
-        today.getMonth() === creationDateAnnual.getMonth() &&
-        today.getDate() === creationDateAnnual.getDate()
+        today.getUTCFullYear() === creationDateAnnual.getUTCFullYear() &&
+        today.getUTCMonth() === creationDateAnnual.getUTCMonth() &&
+        today.getUTCDate() === creationDateAnnual.getUTCDate()
       ) {
         return formatApiDate(nextAnnual);
       }
@@ -246,6 +250,7 @@ async function runMaintenanceJob() {
           `🎉 Successfully created new record with ID: ${newRecord.data.id}`
         );
       } else {
+        // This log can be useful for regular runs, so it's kept
         console.log(
           `- Skipping record ${recordId} (Freq: ${frequency}). Condition not met today.`
         );
