@@ -21,8 +21,13 @@ function filterMostRecentRecords(records) {
   for (const record of records) {
     const parentId = getParentId(record.attributes);
     const frequency = record.attributes.cf_maintenance_frequency_dropdown;
+    // *** UPDATED LOGIC ***
+    // Get the new completion date
+    const completionDate = record.attributes.cf_pm_completion_date;
 
-    if (frequency && frequency.toLowerCase() !== "none") {
+    // *** UPDATED FILTER ***
+    // Only group records that have a valid frequency AND a completion date
+    if (frequency && frequency.toLowerCase() !== "none" && completionDate) {
       const groupKey = `${parentId}-${frequency}`;
 
       if (!groups.has(groupKey)) {
@@ -35,6 +40,7 @@ function filterMostRecentRecords(records) {
   const mostRecentRecords = [];
 
   for (const group of groups.values()) {
+    // This logic remains the same: find the most recently created record in the group
     const mostRecent = group.reduce((latest, current) => {
       return new Date(current.attributes.date_created) >
         new Date(latest.attributes.date_created)
@@ -47,21 +53,29 @@ function filterMostRecentRecords(records) {
   return mostRecentRecords;
 }
 
-function getNextDueDate(frequency, lastDueDate) {
+// *** UPDATED FUNCTION ***
+// Changed 'lastDueDate' to 'lastCompletionDate' for clarity
+function getNextDueDate(frequency, lastCompletionDate) {
   // Use the current date for production runs
-  const today = new Date();
+  // const today = new Date();
+
+  // FOR TESTING:
+  const today = new Date("2025-12-25T00:00:00Z");
+
   today.setUTCHours(0, 0, 0, 0);
 
   const formatApiDate = (date) => {
     return date.toISOString().slice(0, 19) + "+00:00";
   };
 
-  const lastDueDateObj = new Date(lastDueDate);
+  // *** UPDATED LOGIC ***
+  // All calculations are now based on the completion date
+  const completionDateObj = new Date(lastCompletionDate);
 
   switch (frequency) {
     case "Daily":
-      const nextDay = new Date(lastDueDateObj);
-      nextDay.setUTCDate(lastDueDateObj.getUTCDate() + 1);
+      const nextDay = new Date(completionDateObj);
+      nextDay.setUTCDate(completionDateObj.getUTCDate() + 1);
 
       if (
         today.getUTCDate() === nextDay.getUTCDate() &&
@@ -73,8 +87,8 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Weekly":
-      const nextSunday = new Date(lastDueDateObj);
-      nextSunday.setUTCDate(lastDueDateObj.getUTCDate() + 1);
+      const nextSunday = new Date(completionDateObj);
+      nextSunday.setUTCDate(completionDateObj.getUTCDate() + 1);
 
       while (nextSunday.getUTCDay() !== 0) {
         nextSunday.setUTCDate(nextSunday.getUTCDate() + 1);
@@ -92,8 +106,8 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Monthly":
-      const nextMonthDue = new Date(lastDueDateObj);
-      nextMonthDue.setUTCMonth(lastDueDateObj.getUTCMonth() + 1);
+      const nextMonthDue = new Date(completionDateObj);
+      nextMonthDue.setUTCMonth(completionDateObj.getUTCMonth() + 1);
       const creationDateMonthly = new Date(nextMonthDue);
       creationDateMonthly.setUTCDate(1);
 
@@ -114,8 +128,8 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Quarterly":
-      const quarterlyDueDate = new Date(lastDueDateObj);
-      quarterlyDueDate.setUTCMonth(lastDueDateObj.getUTCMonth() + 3);
+      const quarterlyDueDate = new Date(completionDateObj);
+      quarterlyDueDate.setUTCMonth(completionDateObj.getUTCMonth() + 3);
       const creationDateQuarterly = new Date(
         Date.UTC(
           quarterlyDueDate.getUTCFullYear(),
@@ -140,10 +154,12 @@ function getNextDueDate(frequency, lastDueDate) {
         return formatApiDate(endOfNewMonth);
       }
       break;
+
+    // Corrected the typo to match your data
     case "Biannually":
     case "Bi-Annually":
-      const nextBiannualDue = new Date(lastDueDateObj);
-      nextBiannualDue.setUTCMonth(lastDueDateObj.getUTCMonth() + 5);
+      const nextBiannualDue = new Date(completionDateObj);
+      nextBiannualDue.setUTCMonth(completionDateObj.getUTCMonth() + 5);
       const creationDateBiannual = new Date(nextBiannualDue);
       creationDateBiannual.setUTCDate(1);
 
@@ -157,8 +173,8 @@ function getNextDueDate(frequency, lastDueDate) {
       break;
 
     case "Annually":
-      const nextAnnual = new Date(lastDueDateObj);
-      nextAnnual.setUTCFullYear(lastDueDateObj.getUTCFullYear() + 1);
+      const nextAnnual = new Date(completionDateObj);
+      nextAnnual.setUTCFullYear(completionDateObj.getUTCFullYear() + 1);
       const creationDateAnnual = new Date(
         Date.UTC(nextAnnual.getUTCFullYear(), nextAnnual.getUTCMonth() - 1, 1)
       );
@@ -181,6 +197,7 @@ async function runMaintenanceJob() {
     const allRecords = await searchMaintenanceRecords();
     console.log(`Fetched ${allRecords.length} total maintenance records.`);
 
+    // *** UPDATED VALIDITY FILTER ***
     const validRecords = allRecords.filter((record) => {
       const attr = record.attributes;
       const hasParentId =
@@ -189,7 +206,8 @@ async function runMaintenanceJob() {
         hasParentId &&
         attr.cf_maintenance_frequency_dropdown &&
         attr.date_created &&
-        attr.cf_next_pm_due_date
+        // Now checks for the completion date
+        attr.cf_pm_completion_date
       );
     });
     console.log(`Found ${validRecords.length} valid records after filtering.`);
@@ -203,9 +221,13 @@ async function runMaintenanceJob() {
       const recordId = summaryRecord.id;
       const frequency =
         summaryRecord.attributes.cf_maintenance_frequency_dropdown;
-      const lastDueDate = summaryRecord.attributes.cf_next_pm_due_date;
 
-      const nextDueDate = getNextDueDate(frequency, lastDueDate);
+      // *** UPDATED LOGIC ***
+      // Get the completion date to be used for calculation
+      const lastCompletionDate = summaryRecord.attributes.cf_pm_completion_date;
+
+      // Pass the completion date to the calculation function
+      const nextDueDate = getNextDueDate(frequency, lastCompletionDate);
 
       if (nextDueDate) {
         console.log(
@@ -230,6 +252,7 @@ async function runMaintenanceJob() {
               status_id: parseInt(process.env.INITIAL_STATUS_ID),
               parent_id: definitiveParentId,
 
+              // Copy all relevant fields from the previous record
               cf_parent_record: attributes.cf_parent_record,
               cf_parent_equipment_record_new:
                 attributes.cf_parent_equipment_record_new,
@@ -240,7 +263,10 @@ async function runMaintenanceJob() {
               cf_equip_serial_num: attributes.cf_equip_serial_num,
               cf_pm_type: attributes.cf_pm_type,
               cf_maintenance_frequency_dropdown: frequency,
+
+              // Set the new due date
               cf_next_pm_due_date: nextDueDate,
+              // We don't set cf_pm_completion_date, as it's a new record
             },
           },
         };
