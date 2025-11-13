@@ -57,10 +57,10 @@ function filterMostRecentRecords(records) {
 // Changed 'lastDueDate' to 'lastCompletionDate' for clarity
 function getNextDueDate(frequency, lastCompletionDate) {
   // Use the current date for production runs
-  // const today = new Date();
+  const today = new Date();
 
   // FOR TESTING:
-  const today = new Date("2025-12-25T00:00:00Z");
+  // const today = new Date("2025-12-25T00:00:00Z");
 
   today.setUTCHours(0, 0, 0, 0);
 
